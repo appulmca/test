@@ -1,98 +1,33 @@
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class AddressValidator {
-    
-    public static boolean validateResidentialHistory(List<Address> residentialHistory) {
-        if (residentialHistory.isEmpty()) {
-            return false; // Empty residential history
-        }
+import java.util.Date;
 
-        // Get the current year and month
-        YearMonth currentYearMonth = YearMonth.now();
+public class YourClass {
 
-        // Sort the residential history by fromMonthYear
-        residentialHistory.sort((a1, a2) -> a1.getFromMonthYear().compareTo(a2.getFromMonthYear()));
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss z")
+    private Date dateTime;
 
-        // Check the first address to ensure it doesn't start more than 5 years ago
-        if (residentialHistory.get(0).getFromMonthYear().isBefore(currentYearMonth.minusYears(5))) {
-            return false; // Address history starts more than 5 years ago
-        }
+    // getters and setters
 
-        for (int i = 1; i < residentialHistory.size(); i++) {
-            Address previousAddress = residentialHistory.get(i - 1);
-            Address currentAddress = residentialHistory.get(i);
-
-            // Check for gap between addresses
-            if (previousAddress.getToMonthYear() != null) {
-                YearMonth nextExpectedMonth = previousAddress.getToMonthYear().plusMonths(1);
-                if (!nextExpectedMonth.equals(currentAddress.getFromMonthYear())) {
-                    return false; // Gap between addresses
-                }
-            }
-
-            // Check for current address
-            if (currentAddress.isCurrent()) {
-                if (currentAddress.getFromMonthYear().isAfter(currentYearMonth)) {
-                    return false; // Current address starts in future
-                }
-                return true; // Current address found, no need to check further
-            }
-        }
-
-        // Check the last address to ensure it doesn't extend beyond the current date
-        Address lastAddress = residentialHistory.get(residentialHistory.size() - 1);
-        if (lastAddress.getToMonthYear() == null && !lastAddress.isCurrent()) {
-            return false; // Last address doesn't have an end date
-        }
-
-        if (lastAddress.getToMonthYear() != null && lastAddress.getToMonthYear().isAfter(currentYearMonth)) {
-            return false; // Last address extends beyond current date
-        }
-
-        return true; // Residential history is valid
+    public Date getDateTime() {
+        return dateTime;
     }
 
-    public static void main(String[] args) {
-        // Example usage
-        List<Address> residentialHistory = List.of(
-            new Address(YearMonth.of(2019, 4), YearMonth.of(2020, 5)),
-            new Address(YearMonth.of(2020, 6), YearMonth.of(2021, 7)),
-            new Address(YearMonth.of(2021, 8), null, true)
-        );
-
-        boolean isValid = validateResidentialHistory(residentialHistory);
-        System.out.println("Residential history is valid: " + isValid);
+    public void setDateTime(Date dateTime) {
+        this.dateTime = dateTime;
     }
 }
 
-class Address {
-    private YearMonth fromMonthYear;
-    private YearMonth toMonthYear;
-    private boolean current;
+public class Example {
+    public static void main(String[] args) throws Exception {
+        String jsonResponse = "{\"dateTime\": \"2024-05-14 15:30:45 EST\"}";
 
-    public Address(YearMonth fromMonthYear, YearMonth toMonthYear) {
-        this.fromMonthYear = fromMonthYear;
-        this.toMonthYear = toMonthYear;
-        this.current = false;
-    }
+        ObjectMapper objectMapper = new ObjectMapper();
+        YourClass yourClass = objectMapper.readValue(jsonResponse, YourClass.class);
 
-    public Address(YearMonth fromMonthYear, YearMonth toMonthYear, boolean current) {
-        this.fromMonthYear = fromMonthYear;
-        this.toMonthYear = toMonthYear;
-        this.current = current;
-    }
-
-    public YearMonth getFromMonthYear() {
-        return fromMonthYear;
-    }
-
-    public YearMonth getToMonthYear() {
-        return toMonthYear;
-    }
-
-    public boolean isCurrent() {
-        return current;
+        // Print the parsed date and its class type
+        System.out.println("Parsed Date: " + yourClass.getDateTime());
+        System.out.println("Date Class Type: " + yourClass.getDateTime().getClass().getName());
     }
 }

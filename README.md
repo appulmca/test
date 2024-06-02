@@ -1,3 +1,4 @@
+
     public EmploymentResponse processEmploymentHistory(List<Employment> employments) {
         // Filter out deleted employments
         List<Employment> filteredEmployments = employments.stream()
@@ -23,32 +24,40 @@
             }
         }
 
-        // Handle overlapping and fill gaps programmatically
-        List<Employment> processedEmployments = new ArrayList<>();
+        // Check for overlapping periods
+        for (int i = 0; i < filteredEmployments.size() - 1; i++) {
+            Employment current = filteredEmployments.get(i);
+            Employment next = filteredEmployments.get(i + 1);
+            YearMonth currentEnd = current.getToDate() == null ? YearMonth.from(now) : current.getToDate();
+            if (!currentEnd.isBefore(next.getFromDate())) {
+                return new EmploymentResponse(employments, "Overlapping employment periods detected.");
+            }
+        }
+
+        // Fill gaps programmatically
+        List<Employment> filledEmployments = new ArrayList<>();
         YearMonth lastEndDate = tenYearsAgo;
         for (Employment employment : filteredEmployments) {
             if (lastEndDate.isBefore(employment.getFromDate().minusMonths(1))) {
-                processedEmployments.add(new Employment(lastEndDate.plusMonths(1), employment.getFromDate().minusMonths(1), Action.ADDED));
-            } else if (lastEndDate.isAfter(employment.getFromDate())) {
-                employment.setFromDate(lastEndDate.plusMonths(1));
+                filledEmployments.add(new Employment(lastEndDate.plusMonths(1), employment.getFromDate().minusMonths(1), Action.ADDED));
             }
-            processedEmployments.add(employment);
+            filledEmployments.add(employment);
             lastEndDate = employment.getToDate() == null ? YearMonth.from(now) : employment.getToDate();
         }
 
         // Check for the final gap
         if (lastEndDate.isBefore(YearMonth.from(now))) {
-            processedEmployments.add(new Employment(lastEndDate.plusMonths(1), YearMonth.from(now), Action.ADDED));
+            filledEmployments.add(new Employment(lastEndDate.plusMonths(1), YearMonth.from(now), Action.ADDED));
         }
 
         // Check for the initial gap
-        if (processedEmployments.isEmpty() || processedEmployments.get(0).getFromDate().isAfter(tenYearsAgo)) {
-            YearMonth fillToDate = processedEmployments.isEmpty() ? YearMonth.from(now) : processedEmployments.get(0).getFromDate().minusMonths(1);
-            processedEmployments.add(0, new Employment(tenYearsAgo, fillToDate, Action.ADDED));
+        if (filledEmployments.isEmpty() || filledEmployments.get(0).getFromDate().isAfter(tenYearsAgo)) {
+            YearMonth fillToDate = filledEmployments.isEmpty() ? YearMonth.from(now) : filledEmployments.get(0).getFromDate().minusMonths(1);
+            filledEmployments.add(0, new Employment(tenYearsAgo, fillToDate, Action.ADDED));
         }
 
         // Sort again to maintain order
-        Collections.sort(processedEmployments, Comparator.comparing(Employment::getFromDate));
+        Collections.sort(filledEmployments, Comparator.comparing(Employment::getFromDate));
 
-        return new EmploymentResponse(processedEmployments, null);
+        return new EmploymentResponse(filledEmployments, null);
     }
